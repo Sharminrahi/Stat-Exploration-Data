@@ -1,0 +1,503 @@
+---
+title: "Assignment 3"
+author: "Sharmin Akhter"
+date: "2023-03-15"
+output:
+  pdf_document: default
+  html_document: default
+  theme: spacelab
+  word_document: default
+toc: yes
+urlcolor: BrickRed
+---
+
+```{r}
+library(MASS)
+library(htmltools)
+library(klaR)
+library(tidyverse)
+library (ISLR)
+library(corrplot)
+library(mvtnorm)
+library(qcc)
+library(stats)
+library(magrittr)
+library(abind)
+library(FactoMineR)
+library(png)
+library(imager)
+library(jpeg)
+```
+
+
+# Question 1
+
+a) Generate a simulated data set with 50 observations in each of three classes (i.e. 150 observations total), and 50 variables.
+Be sure to add a mean shift to the observations in each class so that there are three distinct classes and choose covariance matrix of your choice.
+
+(b) Perform PCA on the 150 observations and plot the first two principal component score vectors. Use a different color to indicate the observations in each of the three classes. If the three classes appear separated in this plot, If not, then return to part (a) and modify the simulation so that there is greater separation between the three classes.
+
+c) Use diagnostic tools such as variance contribution plot and offer your comments.
+
+d) Also use loading plots & scatter plots of for first two PCs and interpret the results.
+
+### Question 1(a)
+
+Generate a simulated data set with 50 observations in each of three classes (i.e. 150 observations total), and 50 variables.
+Be sure to add a mean shift to the observations in each class so that there are three distinct classes and choose covariance matrix of your choice.
+
+#Part 1
+Generate a simulated data set with 50 observations in each of three classes (i.e. 150 observations total), and 50 variables.
+
+```{r}
+observe_50 <- rep(c(1,2,3), 50)
+observe_50
+```
+
+#randomly create matrix of 50 cols(variables)*150 rows(observations) and add mean shift
+
+```{r}
+# Set a seed for reproducibility
+set.seed(42)
+
+# Generate random data for each class with specified mean shifts
+class_1 <- matrix(rnorm(50*50, mean=0), nrow=50)
+class_2 <- matrix(rnorm(50*50, mean=0.7), nrow=50)
+class_3 <- matrix(rnorm(50*50, mean=1.4), nrow=50)
+
+# Combine the three classes into one dataset
+X <- rbind(class_1, class_2, class_3)
+```
+
+#Comments
+In this code, we generate data for each class using the rnorm() function. We set the mean (mu) of each class to be shifted by 0, 0.7, and 1.4, respectively, to create three distinct classes. 
+
+### Question 1(b)
+
+Perform PCA on the 150 observations and plot the first two principal component score vectors. Use a different color to indicate the observations in each of the three classes. If the three classes appear separated in this plot, If not, then return to part (a) and modify the simulation so that there is greater separation between the three classes.
+
+```{r}
+#perform pca on the dataset
+pca <- prcomp(X, center = TRUE, scale. = TRUE)
+
+# Extract first two principal component
+pc_scores<- pca$x[, 1:2]
+
+#Create a vector with class labels
+
+class_labels<- c(rep("Class 1", 50), rep("Class 2", 50), rep("Class 3", 50))
+```
+
+#plot the first two principal component score vectors
+
+```{r}
+ggplot(data.frame(pc_scores, Class = class_labels), aes(x = PC1, y = PC2, color = Class))+
+  geom_point(size = 3, alpha = 0.7)+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(title = "PCA Plot: First Two Principal Components",
+       x = "Principal Component 1",
+       y = "Principal Component 2")
+```
+
+#Comment
+
+In this code, we perform PCA on the data using the prcomp() function with scale. = TRUE to scale the variables to have unit variance. We then plot the first two principal component score vectors using the ggplot() function. We color-code the observations in each of the three classes(class_labels)
+
+### Question 1(c)
+
+Use diagnostic tools such as variance contribution plot and offer your comments.
+
+```{r}
+summary(pca)
+plot(pca)
+```
+
+
+```{r}
+# Calculate variance explained by each principal component
+explained_variance <- pca$sdev^2
+explained_variance_ratio <- explained_variance / sum(explained_variance)
+
+# Create a data frame for the plot
+variance_data <- data.frame(
+  Component = 1:length(explained_variance),
+  Variance = explained_variance_ratio
+)
+
+# Create the variance contribution plot (screen plot)
+ggplot(variance_data, aes(x = Component, y = Variance)) +
+  geom_point() +
+  geom_line() +
+  theme() +
+  labs(title = "Variance Contribution Plot",
+       x = "Principal Component",
+       y = "Proportion of Variance Explained") +
+  theme(plot.title = element_text(hjust = 0.5))
+# Calculate cumulative proportion of explained variance
+cumulative_proportion <- cumsum(explained_variance_ratio)
+
+# Display the cumulative proportion
+cumulative_proportion
+
+```
+
+#Comment
+
+The variance contribution plot reveals a noticeable decline in the proportion of variance explained following the initial few principal components. This suggests that these first few principal components account for most of the variability in the dataset, while the subsequent principal components contribute less to explaining the variability.
+
+From this variance contribution plot, we can infer that using a limited number of principal components would likely be adequate for representing the dataset. Nevertheless, the optimal number of principal components to use in a specific analysis is contingent upon the research question being addressed and the level of detail required. In certain situations, incorporating more principal components might be necessary to capture additional variation in the dataset, while in other cases, a smaller number of principal components may be sufficient.
+
+### Question 1(d)
+
+Also use loading plots & scatter plots of for first two PCs and interpret the results.
+
+#Create a data frame with loadings for the first two PCs
+
+```{r}
+loadings_data<- data.frame(
+  Variable = 1:ncol(pca$rotation),
+  PC1 = pca$rotation[, 1],
+  PC2 = pca$rotation[, 2]
+)
+```
+
+
+#Create loading plot for the first two PCs
+
+```{r}
+ggplot(loadings_data, aes(x = PC1, y = PC2, label = Variable))+
+  geom_text(size = 3, check_overlap = TRUE) +
+  theme()+
+  labs(title = "Loading Plot: First Two Principal Components",
+       x = "PC1 Loadings",
+       y = "PC2 Loadings")+
+      theme(plot.title = element_text(hjust = 0.5)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed")
+```
+
+#Different method for loading plot PC1 and PC2
+
+```{r}
+# Loading plot for first two PCs
+biplot(pca, scale = 0)
+```
+
+#Create scatter plot for the first two PCs
+
+```{r}
+scatter_data <- data.frame(pc_scores, Class = class_labels)
+ggplot(scatter_data, aes(x = PC1, y = PC2, color = Class)) +
+  geom_point(size = 3, alpha = 0.7) +
+  labs(title = "Scatter Plot: First Two Principal Components",
+       x = "Principal Component 1",
+       y = "Principal Component 2") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+#Interpretation
+
+Loading Plot: The loading plot displays the relationship between the original variables and the first two principal components. Each point in the plot represents a variable, and its position is determined by its loading values on the first two principal components. Variables close together in the plot are highly correlated, while variables on opposite sides of the origin are negatively correlated. In this plot, you can identify which variables are strongly related to each other and whether they positively or negatively affect the principal components
+
+The scatter plot of the first two principal components shows the distribution of observations in the space defined by these two components. This plot helps visualize the separation between the different classes in the reduced-dimension space. You can assess the effectiveness of the first two principal components in separating the classes by checking if the observations belonging to different classes form distinct clusters in the scatter plot.
+
+# Question 2
+
+a) Choose any photo of your choice and convert it into the numerical data. Perform a PCA and reconstruct back the data based on first 100 PCA. Compare the file sizes of original photo and new photo based on PCA. Comment on the quality of photo based on PCA.
+
+b) i) For matrix completion, the codes used in the book "Statistical Learning using R" used the svd() function in R. Instead we can use the prcomp(0). write a function using prcomp() for matrix completion. 
+
+ii) Use the generated data from Q.1(a). Consider only first 10 variables, so that your new data is of size 150 x 10. Randomly select 5 observations from this new data set and assume that these 5 observations are missing. Use Matrix Completion algorithm to estimate missing values using PCA. Offer your comments on the performance of the missing value estimation using PCA.
+
+### Question 2(a)
+
+Choose any photo of your choice and convert it into the numerical data. Perform a PCA and reconstruct back the data based on first 100 PCA. Compare the file sizes of original photo and new photo based on PCA. Comment on the quality of photo based on PCA.
+
+#Ans:
+
+#Load the image
+
+```{r}
+image_load <- load.image("flag.png")
+plot(image_load)
+```
+
+# Convert the image into numerical data
+
+```{r}
+gray_image <- grayscale(image_load)
+
+# Convert the grayscale image to numerical data
+num_data <- as.matrix(gray_image)
+```
+
+#Plot Gray Image
+
+```{r}
+plot(gray_image)
+```
+#PCA the first 100 components
+
+```{r}
+# Perform PCA and retain the first 100 principal components
+pca_result <- prcomp(num_data, scale. = TRUE)
+pca_result_100 <- pca_result$x[, 1:100]
+```
+
+#Reconstructed Image
+
+```{r}
+# Reconstruct the image using the first 100 principal components
+reconstructed_num_data<- pca_result$x[,1:100]%*%t(pca_result$rotation[,1:100])
+
+# Convert reconstructed image matrix to imager format
+reconstructed_img <- as.cimg(reconstructed_num_data, dim(gray_image))
+
+# Display the original and reconstructed images side by side
+par(mfrow=c(1,2))
+plot(image_load, main="Original Image")
+plot(reconstructed_img, main="Reconstructed Image (100 PCA)")
+
+```
+
+```{r}
+# Convert imager objects to matrices
+gray_image_matrix <- as.matrix(gray_image)
+reconstructed_image_matrix <- as.matrix(reconstructed_img)
+```
+
+
+```{r}
+# Save the original and reconstructed images
+writeJPEG(gray_image_matrix, "original_image.jpg")
+writeJPEG(reconstructed_image_matrix, "reconstructed_image.jpg")
+
+
+# Compare the file sizes of the original and reconstructed images
+original_size <- file.size("original_image.jpg")
+reconstructed_size <- file.size("reconstructed_image.jpg")
+
+cat("Original image size: ", original_size, "bytes\n")
+cat("Reconstructed image size: ", reconstructed_size, "bytes\n")
+
+```
+
+#Comments
+
+The reconstructed image, created using only the first 100 principal components, exhibits a notable disparity in quality compared to the original image. This is a result of PCA's compression technique, which retains the most significant data attributes while reducing dimensionality. However, such a process inevitably leads to a loss of information.
+
+In summary, the reconstructed image's quality is inferior to the original image, as only the first 100 principal components were utilized. This difference arises from the dimensionality reduction and the subsequent loss of information that occurs during PCA. Balancing the trade-off between image quality and file size is essential when determining the optimal number of principal components for reconstruction.
+
+### Question 2b(i)
+
+i) For matrix completion, the codes used in the book "Statistical Learning using R" used the svd() function in R. Instead we can use the prcomp(0). write a function using prcomp() for matrix completion. 
+
+```{r}
+matrix_completion_prcomp <- function(X, rank, maxiter = 1000, tol = 1e-4) {
+  
+  # Initialize missing values with the mean of their respective columns
+  Y <- X
+  for (j in 1:ncol(Y)) {
+    col_mean <- mean(Y[,j], na.rm = TRUE)
+    Y[is.na(Y[,j]), j] <- col_mean
+  }
+  
+  # Perform PCA on the initialized matrix
+  pca <- prcomp(Y, center = TRUE, scale = FALSE)
+  
+  # Iterate until convergence or maximum iterations reached
+  for (i in 1:maxiter) {
+    
+    # Compute the low-rank approximation of Y
+    Y_approx <- pca$x[, 1:rank] %*% t(pca$rotation[, 1:rank])
+    
+    # Replace missing values in Y with those in the low-rank approximation
+    Y[is.na(X)] <- Y_approx[is.na(X)]
+    
+    # Update the PCA decomposition of Y
+    pca <- prcomp(Y, center = TRUE, scale = FALSE)
+    
+    # Check for convergence
+    if (sum((Y - Y_approx)^2, na.rm = TRUE) < tol) {
+      break
+    }
+  }
+  
+  # Return the completed matrix
+  return(Y)
+}
+```
+
+### Question 2b(ii)
+
+ii) Use the generated data from Q.1(a). Consider only first 10 variables, so that your new data is of size 150 x 10. Randomly select 5 observations from this new data set and assume that these 5 observations are missing. Use Matrix Completion algorithm to estimate missing values using PCA. Offer your comments on the performance of the missing value estimation using PCA.
+
+#Selecting first 10 variables
+
+```{r}
+# Selecting the first 10 variables
+pca_data_10 <- X[, 1:10]
+
+# Randomly select 5 observations
+missing_rows <- sample(pca_data_10, 5)
+
+# set the selested values to NA
+pca_data_10[pca_data_10 %in% missing_rows]<- NA
+
+#call function to complete matrix
+completion_matrix<- matrix_completion_prcomp(pca_data_10, 10, 1000, 1e-4)
+pca_output<- prcomp(completion_matrix, scale.= TRUE)
+pca_output
+```
+
+#comments
+
+```{r}
+# Assuming the original data with missing values is in pca_data_10_missing
+mse <- mean((missing_rows - completion_matrix)^2, na.rm = TRUE)
+print(paste0("Mean Squared Error: ", mse))
+```
+
+A lower MSE indicates better performance in estimating the missing values.
+
+# Question 3
+
+For this problem, use the data in Q1(a).
+
+a) Perform K-means clustering of the observations with K = 3. How well do the clusters that you obtained in K-means clustering compare to the true class labels?
+Hint: You can use the table() function in R to compare the true class labels to the class labels obtained by clustering. Be careful how you interpret the results: K-means clustering will arbitrarily number the clusters, so you cannot simply check whether the true class labels and clustering labels are the same. 
+
+(b) Perform K-means clustering with K = 2. Describe your results.
+
+(c) Now perform K-means clustering with K = 4, and describe your results.
+
+(d) Now perform K-means clustering with K = 3 on the first two principal component score vectors, rather than on the raw data. That is, perform K-means clustering on the 150x2 matrix of which the first column is the first principal component score vector, and the second column is the second principal component score vector. Comment on the results.
+
+(g) Using the scale() function, perform K-means clustering with K = 3 on the data after scaling each variable to have standard deviation one. How do these results compare to those obtained in Q1? Explain.
+
+### Question 3(a)
+
+Perform K-means clustering of the observations with K = 3. How well do the clusters that you obtained in K-means clustering compare to the true class labels?
+Hint: You can use the table() function in R to compare the true class labels to the class labels obtained by clustering. Be careful how you interpret the results: K-means clustering will arbitrarily number the clusters, so you cannot simply check whether the true class labels and clustering labels are the same. 
+
+#Ans:
+
+```{r}
+clus <- kmeans(X, centers = 3)
+true_class <- c(rep(1,50), rep(2,50), rep(3,50))
+true_class
+```
+
+```{r}
+table(clus$cluster, true_class)
+```
+```{r}
+print(length(clus$cluster))
+print(length(true_class))
+```
+
+#Comment
+
+The rows represent the clusters obtained from the k-means algorithm, while the columns represent the true class labels. The values in the cells indicate the number of observations in each combination of cluster and true class.
+
+Cluster 1 has 49 out of 50 observations from true class 3, indicating a good match. Cluster 2 has 49 out of 50 observations from true class 2, again indicating a good match. Cluster 3 has 50 out of 50 observations from true class 1, which is a perfect match.
+
+### Question 3(b)
+
+Perform K-means clustering with K = 2. Describe your results.
+
+#Ans:
+
+```{r}
+clus_2 <- kmeans(X, centers = 2)
+true_class <- c(rep(1,50), rep(2,50), rep(3,50))
+true_class
+```
+
+
+```{r}
+table(clus_2$cluster, true_class)
+```
+
+```{r}
+print(length(clus_2$cluster))
+print(length(true_class))
+```
+
+#Comment
+
+Cluster 1 has 50 out of 50 observations from true class 1, which is a perfect match. Cluster 2 has 50 out of 50 observations from true class 3, which is also a perfect match. However, true class 2 has been divided between both clusters, with 16 observations in cluster 1 and 34 observations in cluster 2.
+In this case, while the k-means algorithm has perfectly identified the observations belonging to true classes 1 and 3, it has struggled to separate the observations of true class 2 effectively. This might indicate that the data points belonging to true class 2 have a higher degree of overlap with the other classes, making it more challenging for the algorithm to distinguish them.
+
+### Question 3(c)
+
+Now perform K-means clustering with K = 4, and describe your results.
+
+#Ans:
+
+
+```{r}
+clus_4 <- kmeans(X, centers = 4)
+true_class <- c(rep(1,50), rep(2,50), rep(3,50))
+true_class
+table(clus_4$cluster, true_class)
+```
+
+#Comment
+
+Cluster 4 has 50 out of 50 observations from true class 3, which is a perfect match. Cluster 2 has 25 out of 25 observations from true class 2, which is also a perfect match. 
+
+### Question 3(d)
+
+Now perform K-means clustering with K = 3 on the first two principal component score vectors, rather than on the raw data. That is, perform K-means clustering on the 150x2 matrix of which the first column is the first principal component score vector, and the second column is the second principal component score vector. Comment on the results.
+
+#Ans:
+
+```{r}
+# Perform PCA
+pca_result <- prcomp(X, center = TRUE, scale. = TRUE)
+
+# Extract the first two principal component score vectors
+pc1 <- pca_result$x[,1]
+pc2 <- pca_result$x[,2]
+
+# Combine the first two PCs into a new matrix
+pc_scores <- cbind(pc1, pc2)
+
+# Perform k-means clustering on the new matrix with K = 3
+clus_pca <- kmeans(pc_scores, centers = 3)
+
+# Compare the cluster assignments with the true class labels
+table(clus_pca$cluster, true_class)
+```
+
+#Comment
+
+Cluster 1 has 50 out of 50 observations from true class 3, which is a perfect match. Cluster 2 has 50 out of 50 observations from true class 2, which is also a perfect match. Cluster 3 has 50 out of 50 observations from true class 1, which is another perfect match.
+In this case, the k-means algorithm has perfectly identified the observations belonging to all three true classes when applied to the first two principal component score vectors. This indicates that the first two principal components have captured the majority of the variance in the dataset, leading to better separation of the classes.
+
+### Question 3(g)
+
+Using the scale() function, perform K-means clustering with K = 3 on the data after scaling each variable to have standard deviation one. How do these results compare to those obtained in Q1? Explain.
+
+#Ans:
+
+```{r}
+# Standardize the data (mean = 0, sd = 1)
+scaled_data <- scale(X)
+
+# Perform k-means clustering on the scaled data with K = 3
+clus_scaled <- kmeans(scaled_data, centers = 3)
+
+# Compare the cluster assignments with the true class labels
+table(clus_scaled$cluster, true_class)
+```
+
+#Comment
+
+Cluster 2 has 50 out of 50 observations from true class 1, which is a perfect match. Cluster 3 has 49 out of 50 observations from true class 2, which is a good match as well.
+The k-means algorithm has performed well in identifying the observations belonging to true classes 1, 2, and 3 when applied to the scaled data. Although there are a few misclassified observations, the overall clustering results are quite accurate.
+
+#How do these results compare to those obtained in Q1? Explain.
+The scaling doesn't change the result in this part. The clustering result perfectly clustered for one observation in class 3.
+

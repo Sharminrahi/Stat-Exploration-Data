@@ -1,0 +1,147 @@
+---
+title: "STAT 6559 - Assignment 3 Question 2"
+author: "Daniel Fiadjoe"
+date: "2023-04-03"
+output:
+  html_document: default
+  pdf_document: 
+    keep_tex: yes
+---
+
+***
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+
+library(jpeg)
+library(imager)
+
+```
+
+```{r}
+
+```
+
+## Question #2
+a) Choose any photo of your choice and convert it into the numerical data. Perform a PCA and
+reconstruct back the data based on first 100 PCA. Compare the file sizes of original photo and new photo based
+on PCA. Comment on the quality of photo based on PCA.
+b) i) For matrix completion, the codes used in the book "Statistical Learning using R" used the svd()
+function in R. Instead we can use the prcomp(0). write a function using prcomp() for matrix completion. 
+ii)Use the generated data from Q.1(a). Consider only first 10 variables, so that your new data is of size 150 x 10.
+Randomly select 5 observations from this new data set and assume that these 5 observations are missing. Use
+Matrix Completion algorithm to estimate missing values using PCA. Offer your comments on the performance
+of the missing value estimation using PCA.
+
+## Question 1(a)
+```{r}
+# Load the image file
+img_data <- load.image("flag.png")
+
+# Display the image
+plot(img_data)
+
+```
+
+
+```{r}
+
+gray_img <- grayscale(img_data)
+
+# Convert the grayscale image to numerical data
+num_data <- as.matrix(gray_img)
+
+head(num_data)
+
+dim(num_data)
+```
+The dimension is 1600 by 1200.
+
+```{r}
+# Perform PCA
+pca <- prcomp(num_data)
+
+# Get the first 100 principal components
+pca_100 <- pca$x[, 1:100]
+pca_100
+```
+ 
+
+
+```{r}
+# Reconstruct the image using the first 100 principal components
+reconstructed_num_data <- pca_100 %*% t(pca_100) %*% num_data
+
+# Convert reconstructed image matrix to imager format
+reconstructed_img <- as.cimg(reconstructed_num_data, dim(gray_img))
+
+# Display the original and reconstructed images side by side
+par(mfrow=c(1,2))
+plot(img, main="Original Image")
+plot(reconstructed_img, main="Reconstructed Image (100 PCA)")
+
+```
+
+
+```{r}
+# Get file size information for original image
+orig_file_size <- file.info("ManUnitedLogo.jpeg")$size
+
+# Save reconstructed image to file
+save.image(reconstructed_img, "reconstructed_image.jpg")
+
+# Get file size information for reconstructed image
+recon_file_size <- file.info("reconstructed_image.jpg")$size
+
+# Print file sizes
+cat("Original file size:", orig_file_size, "bytes\n")
+cat("Reconstructed file size:", recon_file_size, "bytes\n")
+
+
+```
+# Comment:
+
+There is a big difference between the original image and the reconstructed image. The quality of the reconstructed image using only the first 100 principal components is lower than the original image. The original size of the image is far bigger than the reconstructed image. This is because PCA attempts to capture the most important information in the data and compress it into fewer dimensions, but some loss of information is inevitable. The more principal components used for reconstruction, the closer the reconstructed image will be to the original image in terms of quality, but the file size of the reconstructed image will also increase.
+
+```{r}
+
+```
+
+## Question 1(b)
+
+```{r}
+
+
+```
+
+
+```{r}
+
+```
+
+
+
+```{r}
+
+```
+
+
+
+```{r}
+
+```
+
+
+```{r}
+
+
+```
