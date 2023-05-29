@@ -1,0 +1,690 @@
+---
+title: "Assignment 2"
+author: "Sharmin Akhter"
+date: "2023-03-15"
+output:
+  pdf_document: default
+  html_document: default
+  theme: spacelab
+  word_document: default
+toc: yes
+urlcolor: BrickRed
+---
+
+```{r}
+library(MASS)
+library(htmltools)
+library(klaR)
+library(tidyverse)
+library (ISLR)
+library(corrplot)
+library(mvtnorm)
+library(qcc)
+```
+
+
+# Question 1
+
+Observations on two response variables are collected for two treatments. The observation vectors [x1; x2] are 
+Treatment 1: $$(3,3) (1,6), (2,3)$$
+
+Treatment 2: $$(2,3), (5,1), (3,1), (2,3)$$
+a) Calculate the Spooled
+b) Test $$H_0: \mu_1 = \mu_2$$ employing a two sample approach with $$\alpha = 0.01$$
+
+### Question 1(a)
+##Calculate the Spooled
+#Ans:
+
+We know,
+$$S_{pooled} = \frac{n_1-1}{n_1+n_2-2}s_1+\frac{n_2-1}{n_1+n_2-2}s_2$$
+
+#Create matix
+
+```{r}
+treatment1 <- matrix(c(3, 1, 2, 3, 6, 3), nrow = 3)
+treatment1
+treatment2 <- matrix(c(2, 5, 3, 2, 3, 1, 1, 3), ncol = 2)
+treatment2
+```
+
+Here n1, n2 are sample size(length) of treatment1 and treatment2 which are
+
+```{r}
+n1 <- nrow(treatment1)
+n2 <- nrow(treatment2)
+n1
+n2
+```
+
+#Mean and Variance of Treatment1 and Treatment 2
+
+```{r}
+mean_treat1 <- colMeans(treatment1)
+mean_treat1
+mean_treat2 <- colMeans(treatment2)
+mean_treat2
+s1 <- cov(treatment1)
+s1
+s2 <- cov(treatment2)
+s2
+```
+
+#Now s_pooles(pooled standard deviation) by formula
+
+```{r}
+sp <- ((n1-1)/(n1+n2-2))*s1+((n2-1)/(n1+n2-2))*s2
+sp
+```
+
+### Question 1(b)
+Test $$H_0: \mu_1 = \mu_2$$ employing a two sample approach with $$\alpha = 0.01$$
+
+
+```{r}
+# Calculate the two sample t-test statistic
+T2 <- t((mean_treat1 - mean_treat2)) %*% solve((sp*(1/n1 + 1/n2))) %*% (mean_treat1 - mean_treat2)
+T2
+alpha <- 0.01
+F <- qf(1-alpha, 2, n1+n2-2-1)
+T <- (((n1+n2-2)*2) / (n1+n2-2-1))*F
+T
+#t.test(treatment1, treatment2)
+```
+
+#Implement
+
+the calculated t-value (t) falls within the acceptance region, and we cannot conclude that there is a significant difference between the means of the two groups. That means we can't reject null hypothesis.
+
+# Question 2
+
+Generate a data set with two explanatory variables x1 and x2 from multinomial Normal distribution with covariance matrix $$\sigma = c(1, .2, .2, 4)$$ in two classes with **mean for Class 0 is (3,7)** and and **Class 1 is (6,10)**. For the Class 0, generate 50 observations and for Class 1, 50 observations. While generating this data, use the set.seed("99"). **Find the linear discriminant function weights.** Plot the data with **two colors and draw the discriminant function for classification.** Also plot the 4 test data (3.68; 5.65); (3.28; 5.20); (3.57; 8.82); (4.64; 7.98) and predict the test data. Use the R program also to predict the test data.
+
+### Part1
+
+**Generate a data set**
+Given variables $$x_1, x_2$$ from multinomial normal distribution with covariance matrix $$\sigma = c(1, .2, .2, 4)$$. Alse here class 0 mean is (3,7) and class 1 mean is (6,10).
+
+Now we have to generate 50 observations for class 0 and 50 observations for class 1 with set.seed(99)
+
+#For class 0
+
+```{r}
+set.seed(99)
+mu <- c(3, 7)
+sigma <- matrix(c(1, .2, .2, 4), nrow = 2)
+class0 <- mvrnorm(50, mu, sigma)
+class0
+```
+
+#For class 1
+
+```{r}
+mu1 <- c(6, 10)
+sigma <- matrix(c(1, 0.2, 0.2, 4), nrow = 2)
+class1 <- mvrnorm(50, mu1, sigma)
+class1
+```
+
+#Combine into a single data frame with a class variable
+
+```{r}
+data <- data.frame(cbind(rbind(class0, class1), rep(0:1, each = 50)))
+colnames(data) <- c("x1", "x2", "class")
+colnames(data)
+data
+```
+
+
+### Part2
+
+**Find the linear discriminant function weights.**
+# check the LDA coefficients/scalings
+
+```{r}
+lda.model <- lda(class ~ x1 + x2, data = data)
+lda.model
+lda.model$scaling
+diag(lda.model$scaling)
+```
+
+### Part3
+
+Plot the data with **two colors and draw the discriminant function for classification.**
+
+```{r}
+# Plot the data with colors based on class
+ggplot(data, aes(x = x1, y = x2, color = factor(class))) +
+  geom_point() +
+  scale_color_manual(values = c("red", "blue"))
+```
+#### Add the linear discriminant function as a line
+
+```{r}
+x1_means <- lda.model$means[,1]
+x1_means
+x2_means <- lda.model$means[, 2]
+x2_means
+w <- lda.model$scaling
+w1 <- w[1,]
+w1
+w2 <- w[2,]
+w2
+
+a <- t(w) %*% ((x1_means + x2_means)/2)
+a
+seq_P1 <- seq(min(data$x1), max(data$x2), 0.1)
+seq_P1
+seq_P2 <- c(a/w[2,]) - ((w[1,]/w[2,])*seq_P1)
+seq_P2
+```
+#LDA line
+
+```{r}
+plot(class0, xlim = c(0,10), ylim = c(0,15), xlab = "X1", ylab = "X1", col = "red", main = "Plot of class o and class 1")
+points(class1, col = "blue")
+lines(seq_P1, seq_P2, col = "green", lty = 2)  # change color to green and line type to dashed
+```
+
+#Also plot the 4 test data (3.68; 5.65); (3.28; 5.20); (3.57; 8.82); (4.64; 7.98) and predict the test data. Use the R program also to predict the test data.
+
+```{r}
+#Test data set
+t1 <- c(3.68,5.65)
+t2 <- c(3.28, 5.20)
+t3 <- c(3.57,8.82)
+t4 <- c(4.64,7.98)
+
+test_data <- rbind(t1,t2,t3,t4)
+test_frame <- data.frame(test_data)
+
+# Plot the above samples and color by class labels
+plot(class0, xlim = c(0,10), ylim = c(0,15), xlab = "X1", ylab = "X1", col = "red", main = "Plot of test data with predicted class")
+points(class1, col = "blue")
+lines(seq_P1, seq_P2, col = "green", lty = 3)  # change color to green and line type to dashed
+
+
+# Add points to the plot
+points(x = c(1, 2, 3), y = c(4, 5, 6), col = "red", pch = 14)
+
+# Add first point of the test dataset
+points(t1[1],t1[2],col="purple", pch=16, cex=2)
+text(t1[1],t1[2],labels ="t1",cex = 1.2)
+
+# Add second point of the test dataset
+points(t2[1],t2[2],col="purple", pch=16, cex=2)
+text(t2[1],t2[2],labels ="t2",cex = 1.2)
+
+# Add third point of the test dataset
+points(t3[1],t3[2],col="purple", pch=16, cex=2)
+text(t3[1],t3[2],labels ="t3",cex = 1.2)
+
+# Add fourth point of the test dataset
+points(t4[1],t4[2],col="purple", pch=16, cex=2)
+text(t4[1],t4[2],labels ="t4",cex = 1.2)
+```
+```{r}
+# predict the class of the test data using the lda model
+newtest_data <- data[c(3:68, 5:65, 3:28, 5:20, 3:57, 8:82, 4:64, 7:98), ]
+
+pred <- predict(lda.model, newtest_data)
+pred
+```
+
+
+
+
+
+# Question 3
+
+This question should be answered using the Weekly data set, which is part of the ISLR package. This data is similar in nature to the Smarket data from this chapter's lab, except that it contains 1,089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010.
+
+(a) Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+
+(b) Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
+
+(c) Compute the confusion matrix and overall fraction of correct predictions. Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression.
+
+(d) Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010).
+
+(e) Repeat (d) using LDA and QDA. Interpret the results.
+
+(f) Which of these methods appears to provide the best results on this data?
+
+### Question 3(a)
+
+(a) Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+
+```{r}
+names(Weekly)
+```
+
+###Summary of weekly data
+
+```{r}
+summary(Weekly)
+```
+
+###Drop last column
+
+```{r}
+cor(Weekly[,-9])
+```
+
+###Find correlation matrix
+
+```{r}
+corrplot(cor(Weekly[,-9]), method = "square")
+```
+ The correlational plot doesn’t illustrate that any other variables are linearly related except volume and Year
+ 
+### Question 3(b)
+
+(b) Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
+
+###Logistic Regreesion with full Datasets
+
+```{r}
+attach(Weekly)
+glm.fit <- glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data = Weekly, family = binomial )
+glm.fit
+```
+#Summary
+
+```{r}
+summary(glm.fit)
+```
+
+#Do any of the predictors appear to be statistically significant? If so, which ones?
+
+The only variable that is statistically significant at the level of significance $$\alpha = 0.05$$ is Lag2. Otherwise the other variables fail to reject the null hypothesis $$\beta = 0$$
+
+### Question 3(c)
+
+(c) Compute the confusion matrix and overall fraction of correct predictions. Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression.
+
+###Compute the confusion matrix and overall fraction of correct predictions.
+
+```{r}
+coef(glm.fit)
+```
+
+#Predict function to see the value goes up or down
+
+```{r}
+glm_prob <- predict(glm.fit, type = "response")
+glm_prob[1:10]
+contrasts(Direction)
+```
+
+#The following two commands create a vector of class predictions based on whether the predicted probability of a market increase is greater than or less than 0.5.
+
+```{r}
+glm_pred <- rep("Down", length(glm_prob))
+glm_pred[glm_prob > 0.5] = "Up"
+```
+
+#Given these predictions, the table() function table() can be used to produce a confusion matrix in order to determine how many observations were correctly or incorrectly classified.
+
+```{r}
+table(glm_pred, Direction)
+```
+
+The diagonal elements of confusion matrix indicates that the correct predictions and off diagonal elements are incorrect predictions. Hence our model correctly predicted that the market would go up on 557 days and that it would go down on 54 days, for a total of 557 + 54 = 611 correct predictions.
+
+#mean to compute fraction of days which are corrected(percentage of correct predictions)
+
+```{r}
+mean(glm_pred == Direction)
+```
+
+#Plot Meanline
+
+```{r}
+hist(glm_prob, breaks = 100, col = "darkred", xlab = "Probability")
+abline(v = mean(glm_prob), lwd = 2)
+```
+
+```{r}
+plot(glm_prob, col = ifelse(Weekly$Direction == "Down","red","green"), pch = 16)
+abline(h = 0.5, lwd= 3)
+```
+
+
+The model's accuracy in predicting the weekly market trend was 56.11%. However, when looking at the two directions of the trend, the model was much better at predicting Up trends with an accuracy of 557/48+557 = 0.9207; 92.07%, compared to only 54/430+54 = 0.1115 ; 11.15% accuracy in predicting Down trends.
+
+#Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression.
+
+```{r}
+length(glm_prob)
+```
+
+The initial assessment of the logistic regression model based on 1089 observations may be misleading as the model was trained and tested on the same set of data. Although the model showed an accuracy of 56.11%, this represents the training error rate, which tends to underestimate the model's error rate on new data. To obtain a more realistic estimate of the model's performance on new, unseen data, it is better to train the model on a portion of the data and test it on a separate set of data that has not been used for training. This approach will provide a better evaluation of the model's ability to predict future market trends, which is of more practical interest.
+
+### Question 3(d)
+
+(d) Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010).
+
+#Fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor.
+
+#Train
+
+```{r}
+train <- (Year<2009)
+weekly.train <-  Weekly[!train,]
+weekly.train
+```
+
+#Fit Train Data with lag2
+
+```{r}
+train.fit <- glm(Direction~Lag2, data = Weekly,family = binomial, subset = train)
+train.fit
+```
+
+#Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010).
+
+```{r}
+train_prob <- predict(train.fit, weekly.train, type = "response")
+train_pred <- rep("Down", length(train_prob))
+train_pred[train_prob > 0.5] = "Up"
+direction_train <- Direction[!train]
+direction_train
+table(train_pred, direction_train)
+```
+
+#Mean
+
+```{r}
+mean(train_pred == direction_train)
+```
+
+After splitting the Weekly dataset into a training and test dataset, the logistic regression model was able to predict weekly market trends with an accuracy rate of 62.5%, which is a moderate improvement compared to the model that used the entire dataset. However, similar to the previous model, it performed better at predicting upward trends with an accuracy rate of 56/56+5 = 0.9180; 91.80%, compared to downward trends with an accuracy rate of only 9/9+34 = 0.2093; 20.93%.
+
+One notable difference is that this model was able to significantly improve its ability to correctly predict downward trends, which is an improvement from the previous model. Overall, the results suggest that splitting the dataset into training and test sets is a better approach for assessing the performance of the logistic regression model compared to using the entire dataset.
+
+### Question 3(e)
+
+(e) Repeat (d) using LDA and QDA. Interpret the results.
+
+#Using LDA
+
+```{r}
+lda.fit <- lda(Direction ~ Lag2, data = Weekly, family = binomial, subset = train)
+lda.fit
+```
+
+```{r}
+lda.pred <- predict(lda.fit, weekly.train)
+table(lda.pred$class, direction_train)
+```
+
+#Mean
+
+```{r}
+mean(lda.pred$class == direction_train)
+```
+
+#The application of Linear Discriminant Analysis (LDA) to develop a classifying model produced outcomes that were comparable to those obtained with the logistic regression model built in section 3(d). Both models were able to predict the weekly trends in the market with similar levels of accuracy, implying that LDA can be a viable alternative to logistic regression in certain scenarios.
+
+#Using QDA
+
+```{r}
+qda.fit <- qda(Direction ~ Lag2, data = Weekly, subset = train)
+qda.fit
+```
+
+```{r}
+qda.pred <- predict(qda.fit, weekly.train)$class
+table(qda.pred, direction_train)
+```
+
+#Mean
+
+```{r}
+mean(qda.pred == direction_train)
+```
+
+#Comment
+
+The implementation of Quadratic Linear Analysis (QLA) resulted in a model that had a lower accuracy rate of 58.65% compared to the previous methods discussed. It is worth noting that this model only focused on predicting the correctness of weekly upward trends and did not take into account the downward weekly trends.
+
+### Question 3(f)
+
+(f) Which of these methods appears to provide the best results on this data?
+
+The methods that have the highest accuracy rates are the Logistic Regression and Linear Discriminant Analysis; both having rates of 62.5%.
+
+# Question 4
+
+Construct the Hotelling T2 charts for future observations using the a simulated data Simulation Set-up
+
+a) Use the set.seed("6559)
+
+b) Generate 100 observations from bivariate normal distribution with $$\mu = (2, 5)$$ and covariance matrix- $$var(x1) = 1; var(x2) = 0.5, cov(x1,x2) = 0.3$$.
+
+c) Estimate the classical estimators of mean and covariances.
+
+d) Generate 25 future observations, using bivariate normal distribution with $$\mu = (2, 5)$$ and covariance matrix -$$var(x1) = 1; var(x2) = 0.5, cov(x1,x2) = 0.3.$$
+
+e) Draw three T2 control chart for future observation using classical estimator and robust estimators of mean and covariance matrix. Draw your conclusions. g) Generate another 25 future observations, using bivariate normal distribution with $$\mu = (2.4, 6)$$ and covariance matrix - $$var(x1) = 1; var(x2) = 0.5, cov(x1,x2) = 0.3$$.
+and repeat (e).
+
+f) Offer your comments. Compare your results with univariate charts for individual observations.
+
+### Question 4(a)
+
+a) Use the set.seed(6559)
+
+```{r}
+set.seed("6559")
+```
+
+### Question 4(b)
+
+Generate 100 observations from bivariate normal distribution with $$\mu = (2, 5)$$ and covariance matrix- $$var(x1) = 1; var(x2) = 0.5, cov(x1,x2) = 0.3$$.
+
+```{r}
+mu_new <- c(2, 5)
+mu_new
+sigma_new <- matrix(c(1, 0.3, 0.3, 0.5), nrow = 2)
+sigma_new
+data_new <- mvrnorm(100, mu_new, sigma_new)
+data_new
+```
+
+### Question 4(c)
+
+Estimate the classical estimators of mean and covariances
+
+```{r}
+classical.mean <- colMeans(data_new)
+classical.cov <- cov(data_new)
+classical.mean
+classical.cov
+```
+
+### Question 4(d)
+
+Generate 25 future observations, using bivariate normal distribution with $$\mu = (2, 5)$$ and covariance matrix -$$var(x1) = 1; var(x2) = 0.5, cov(x1,x2) = 0.3.$$
+
+```{r}
+future.data <- mvrnorm(25, mu_new, sigma_new)
+future.data
+```
+
+```{r}
+classical.mean1 <- colMeans(future.data)
+classical.cov1 <- cov(future.data)
+classical.mean1
+classical.cov1
+```
+
+### Question 4(e)
+
+Draw three T2 control chart for future observation using classical estimator and robust estimators of mean and covariance matrix. Draw your conclusions. g) Generate another 25 future observations, using bivariate normal distribution with mu = (2.4; 6) and covariance matrix - var(x1)=1; var(x2)=.5, cov(x1,x2)=0.3. and repeat (e).
+
+#T2 control chart for Datanew
+
+```{r}
+qmd <- mqcc(data_new, type = "T2")
+summary(qmd)
+```
+
+#For future data(#T2 control chart for new data)
+
+```{r}
+qmf <- mqcc(future.data, type = "T2")
+summary(qmf)
+```
+
+
+#For Old data and new Data
+
+```{r}
+qq <- mqcc(data_new, type = "T2", newdata = future.data, pred.limits = TRUE)
+```
+#Comment
+
+Based on the given chart, we can observe that all the data points fall within the control limits and there are no observations that are considered outliers or out of control. This indicates that the process is stable and in control. There is no evidence of any special cause variation, which would be indicated by data points outside of the control limits, indicating that the process is operating as expected and within acceptable levels of variation. Therefore, we can conclude that the process is stable and under statistical control.
+
+#Classical T2 chart
+
+```{r}
+T2_classic <- apply(future.data, 1, function(x) t(x - classical.mean1) %*% solve(classical.cov1) %*% (x - classical.mean1))
+print(T2_classic)
+```
+
+```{r}
+n <- nrow(data_new)
+m <- nrow(future.data)
+p <- ncol(data_new)
+alpha <- 0.05
+UCL_classic <- ((n-1)*(n+1)*p)/((n**2 -n*p)*qf(alpha, p, n-p))
+```
+
+```{r}
+plot(T2_classic, ylim = c(0, UCL_classic), type = "b", main = "Classical T2 Control Chart for future data set")
+abline(h = UCL_classic, col = "red", lty = 4)
+```
+
+### Question 4(f)
+
+Offer your comments. Compare your results with univariate charts for individual observations.
+
+##can draw individual x-bar charts using each variable, considering the bonferroni correction
+
+```{r}
+x1.data_new <-data_new[,1]
+x2.data_new <- data_new[,2]
+x1.future.data <- future.data[,1]
+x2.future.data <- future.data[,2]
+x1.data_new_mean <- mean(x1.data_new)
+x2.data_new_mean <- mean(x2.data_new)
+x1.data_new_sd <- sd(x1.data_new)
+x2.data_new_sd <- sd(x2.data_new)
+```
+
+#Upper lower limit specification
+
+```{r}
+uclx1 <- x1.data_new_mean + (3*x1.data_new_sd)
+lclx1 <- x1.data_new_mean - (3*x1.data_new_sd)
+uclx2 <- x2.data_new_mean + (3*x2.data_new_sd)
+lclx2 <- x2.data_new_mean - (3*x2.data_new_sd)
+```
+
+#Plot the xbar x1 future
+
+```{r}
+qx1 <- qcc(x1.future.data, type = "xbar", center = x1.data_new_mean, x1.data_new_sd, limits = c(lclx1,uclx1), nsigmas = 3)
+qx1
+```
+
+#for xbar x2 future
+
+```{r}
+qx2 <- qcc(x2.future.data, type = "xbar", center = x2.data_new_mean, x2.data_new_sd, limits = c(lclx2,uclx2), nsigmas = 3)
+qx2
+```
+#Comment
+
+1. It can be inferred that all the observations in the chart were within control limits, as none of them exceeded the upper or lower control limit.
+
+2. In the first chart, most of the observations were below the control limit, while in the second chart, they were above the control limit.
+
+3. The lower control limit of the first chart was in the negative range.
+
+### Question 4(g) 
+
+Generate another 25 future observations, using bivariate normal distribution with mu= (2.4; 6) and covariance matrix - var(x1)=1; var(x2)=.5, cov(x1,x2)=0.3. and repeat (e).
+
+Ans:
+
+```{r}
+mu_f <- c(2.4, 6)
+sigma_new <- matrix(c(1, 0.3, 0.3, 0.5), nrow = 2)
+newfuture.data <- mvrnorm(25, mu_f, sigma_new)
+newfuture.data
+```
+
+
+#For New future data
+
+```{r}
+qmf_new_future <- mqcc(newfuture.data, type = "T2")
+summary(qmf_new_future)
+```
+
+#New future data and Old data
+
+```{r}
+qq_newfuture <- mqcc(data_new, type = "T2", newdata = newfuture.data, pred.limits = TRUE)
+```
+#Implement
+
+The chart shows two data points above the upper control limit, which could be outliers in future observations. One of these points is also above the upper prediction limit, indicating a deviation from the expected trend. Further investigation is needed to determine the cause of this deviation and take corrective actions as necessary.
+
+#X1, X2 for new future data
+
+```{r}
+x1.newfuture.data <- newfuture.data[,1]
+x2.newfuture.data <- newfuture.data[,2]
+```
+
+#Xbar chart for New future data
+##For X1
+
+```{r}
+qx1_newfuture <- qcc(x1.newfuture.data, type = "xbar", center = x1.data_new_mean, x1.data_new_sd, limits = c(lclx1,uclx1), nsigmas = 3)
+qx1_newfuture
+```
+
+#For X2
+
+```{r}
+qx2_newfuture <- qcc(x2.newfuture.data, type = "xbar", center = x2.data_new_mean, x2.data_new_sd, limits = c(lclx2,uclx2), nsigmas = 3)
+qx2_newfuture
+```
+
+# Question 5
+
+Refer the class note on discriminant analysis and definition notations of $ w,B,S$. Show that the w maximizing $$\frac{w^TBw}{w^TSw}$$ satisfies $$S^{-1}Bw = \lambda w$$. Hence, $w$ is eigen vector and $\lambda$ is eigen value of $S^{-1}B$. Argue that we can maximize $w^TBw$ subject to $w^TSw=a$  where $a$ is a constant. Then introduce a Lagrange multiplier for the constraint and differentiate with respect to elements of $w$.
+
+#Ans:
+
+The goal of discriminant analysis is to find a linear combination of the input features that maximizes the between-class scatter while minimizing the within-class scatter. We can define the within-class scatter matrix as $$Sw = \sum_{i=1}^k \sum_{x\in C_i} (x-\mu_i)(x-\mu_i)^T$$ where $C_i$ is the set of observations in class $i$, $\mu_i$ is the mean vector of the observations in class $i$, and $k$ is the number of classes.
+
+Similarly, we can define the between-class scatter matrix as $$Bw = \sum_{i=1}^k n_i(\mu_i - \mu)(\mu_i - \mu)^T$$ where $n_i$ is the number of observations in class $i$, and $\mu$ is the mean vector of all the observations.
+
+To find the weight vector $w$ that maximizes the ratio of between-class scatter to within-class scatter, we can maximize the function $$\frac{w^TBw}{w^TSw}$$ subject to the constraint $w^TSw = 1$.
+
+We can also maximize $w^TBw$ subject to the constraint $w^TSw = a$, where $a$ is a constant, by introducing a Lagrange multiplier and writing the Lagrangian function as $$L(w, \lambda) = w^TBw - \lambda(w^TSw - a)$$.
+
+Taking the derivative of the Lagrangian with respect to $w$ and setting it to zero, we get $$2Bw - 2\lambda Sw = 0$$.
+
+Multiplying both sides of the equation by $S^{-1}$, we get $$S^{-1}Bw = \lambda w$$.
+
+This equation shows that $w$ is an eigenvector of $S^{-1}Bw$ with eigenvalue $\lambda$. Therefore, to maximize $w^TBw$ subject to the constraint $w^TSw = a$, we need to find the eigenvector $w$ that corresponds to the largest eigenvalue of $S^{-1}Bw$.
+
+
