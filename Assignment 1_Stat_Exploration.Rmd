@@ -1,0 +1,531 @@
+---
+title: "Assignment 1"
+author: "Sharmin Akhter"
+date: "2023-03-01"
+output:
+  pdf_document: default
+  html_document: default
+  theme: spacelab
+  word_document: default
+toc: yes
+urlcolor: BrickRed
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(gridExtra)
+library(reshape2)
+library(ICSNP)
+library(datasets)
+library(tidyverse)
+library(dplyr)
+library(MASS)
+library(corrplot)
+library(qcc)
+library(ggplot2)
+```
+
+# Problem I: 
+The following defects data collected from the last month's inspection reports for a particular type of tank. Construct a Pareto diagram and discuss the results.
+
+### Type of defects:
+Parts damaged, Machine problem, supplied parts rusted,Masking insufficient, Misaligned weld, Processing out of order,unfinished fairing,incorrect dimension, Adhesive failure,Paint out of limits, improper test procedure 
+
+### Frequency: 
+34, 29, 13, 17, 2, 4, 3, 36, 6, 10, 1
+
+### Create DataFrame with Type of defects and Frequency
+
+
+```{r}
+df<- data.frame(Type_of_Defects = c('Parts damaged', 'Machine problem', 'Supplied parts rusted', 'Masking insufficient', 'Misaligned weld', 'Processing out of order', 'Unfinished fairing', 'Incorrect dimension', 'Adhesive failure', 'Paint out of limits', 'Improper test procedure' ), Frequency = c(34, 29, 13, 17, 2, 4, 3, 36, 6, 10, 1))
+df
+```
+
+### Pareto diagram
+
+```{r}
+pareto.chart(df$Frequency)
+```
+
+
+
+### Modify Pareto diagram
+
+```{r}
+bar_colors <- rainbow(length(df$Frequency))
+pareto.chart(df$Frequency, col = bar_colors, ylab = "Frequency", yaxt = "n")
+axis(side = 2, at = seq(0,40,10), labels = paste0(seq(0,40,10), "%"))
+```
+
+# Problem II: 
+
+Fifty soft drink bottles of a specific brand are collected from one day production and measured its net weight, which are given below: The specification limits for this brand are (16+0:5oz)
+15.8 16.3 16.2 16.1 16.6
+16.3 15.9 15.9 16.2 16.4
+16.1 16.2 16.5 16.4 16.3
+16.3 16.2 15.9 16.4 16.2
+16.1 16.1 16.4 16.5 16.0
+16.1 15.8 16.7 16.6 16.4
+16.1 16.3 16.5 16.1 16.5
+16.2 16.1 16.2 16.1 16.3
+16.3 16.2 16.4 16.3 16.5
+16.6 16.3 16.4 16.1 16.5
+
+1. Estimate the mean and standard deviation
+
+2. Draw a histogram with superimposing the specification limits. Interpret the histogram focussing on how to improve the process.
+
+3. Draw normal probability plot to justify your answer in (2)
+
+4. Assuming the normality, estimate the sigma level of the process.
+
+5. Estimate the percentage of soft drink bottle out side the lower specification and upper specification.
+
+6. Since the soft drink bottles fell outside the upper specification are quite large, it is decided to lower the process mean setting by 0.2 units. If you are the production manager, how many bottles of drink you need to produce to get 10000 accepted bottles, with new process mean setting, but same standard deviation.
+
+
+# Problem II(1)
+
+1. Estimate the mean and standard deviation
+
+```{r}
+net_weights<- c(15.8, 16.3, 16.2, 16.1, 16.6, 16.3, 15.9, 15.9, 16.2, 16.4, 16.1, 16.2, 16.5, 16.4, 16.3, 16.3, 16.2, 15.9, 16.4, 16.2, 16.1, 16.1, 16.4, 16.5, 16.0,16.1, 15.8, 16.7, 16.6, 16.4, 16.1, 16.3, 16.5, 16.1, 16.5, 16.2, 16.1, 16.2, 16.1, 16.3, 16.3, 16.2, 16.4, 16.3, 16.5, 16.6, 16.3, 16.4, 16.1, 16.5)
+net_weights
+df<- data.frame(net_weights)
+count(df)
+```
+
+### Mean
+
+```{r}
+sample_mean<- mean(net_weights)
+cat("Sample mean:", round(sample_mean, 2), "\n")
+```
+
+### Standard Deviation
+
+```{r}
+sample_sd<- sd(net_weights)
+cat("Sample Standard:", round(sample_sd, 2), "\n")
+```
+
+# Problem II(2)
+
+2. Draw a histogram with superimposing the specification limits. Interpret the histogram focusing on how to improve the process.
+
+### Histogram
+
+The specification limits for this brand are (16+0.5oz). So that the Upper limit is 16.5 and lower limit is 15.5
+
+```{r}
+upper_limit<- 16.5
+lower_limit<- 15.5
+# Basic histogram
+P<- ggplot(df, aes(x=net_weights), y = frequency) + 
+  geom_histogram(bins = 12, fill = "skyblue", color = "white") + 
+  ggtitle("Netweight Histogram with Specific Limits") +
+  xlab("Net Weights(oz)") + ylab("Frequency") + 
+  xlim(c(15.4, 16.7)) + 
+  geom_vline(xintercept = upper_limit, col = "red", lwd = 3)+
+  geom_vline(xintercept = lower_limit, col = "red", lwd = 3)+
+  theme(plot.title = element_text(hjust = 0.5)) 
+P
+```
+
+### Modified histogram with density curve and mean value line
+
+```{r}
+P+geom_vline(aes(xintercept=mean(net_weights)),
+            color="blue", linetype="dashed", size=1) + geom_density(color = "black") 
+```
+
+### Interpretation
+From the above histogram we can see that there are several bottle drinks with net weights falling outside of the specified limits and somewhat normal with a mean value around 16.3oz. In fact, there are several bottles with net weights above the upper specification limit of 16.5 oz. This suggests that there is a problem with the process that is leading to some bottles being filled with more soda than desired.
+
+To improve the process, we could investigate the cause of the overfilling and make changes to reduce the variation in the filling process. This might involve making adjustments to the filling equipment or implementing additional quality control measures to ensure that the correct amount of soda is dispensed into each bottle.
+
+# Problem II(3)
+
+3. Draw normal probability plot to justify your answer in (2)
+
+### Probability Plot
+
+```{r}
+qqnorm(net_weights, main = "Normal Probability Plot of Net Weights")
+qqline(net_weights)
+
+```
+### Interpretation
+From the above normal probability plot we can see that the points form an approximately straight line. Hence the data is normally distributed.
+
+# Problem II(4)
+
+4. Assuming the normality, estimate the sigma level of the process
+
+Ans: Considering the normality, to estimate the sigma level of the process we can use
+
+$$Z_{ST} = Z_{LT}+1.5 $$ and 
+
+Z_{LT} = min {(upper_limit- sample_Mean) / sample_sd, (sample_Mean – lower_limit) / sample_sd }
+
+Here, upper_limit = 16.5, lower_limit = 15.5, sample_sd = 0.21, sample_mean = 16.26
+
+Hence we get
+
+```{r}
+Z_LT<- min((16.5-16.26)/0.21, (16.26-15.5)/0.21)
+Z_LT
+```
+
+### sigma level
+
+```{r}
+Z_ST<- Z_LT+1.5
+Z_ST
+```
+
+Therefore, the estimated sigma level of the process is 2.64, which suggests that the process is capable of producing products within 2.64 standard deviations of the mean on either side of the specification limits.
+
+# Problem II(5)
+
+5. Estimate the percentage of soft drink bottle out side the lower specification and upper specification.
+
+
+```{r}
+# calculate z-score for lower specification limit
+z_lower <- (15.5 - 16.26) / 0.21
+
+# calculate z-score for upper specification limit
+z_upper <- (16.5 - 16.26) / 0.21
+
+# percentage of bottles below the lower specification limit
+p_lower <- pnorm(z_lower, lower.tail = TRUE) * 100
+
+# percentage of bottles above the upper specification limit
+p_upper <- (1 - pnorm(z_upper, lower.tail = TRUE)) * 100
+
+# print the results
+cat("Percentage of bottles below the lower specification limit:", round(p_lower, 2), "%\n")
+cat("Percentage of bottles above the upper specification limit:", round(p_upper, 2), "%\n")
+
+```
+
+
+```{r}
+# calculate z-score for lower specification limit
+z_lower <- ((16.26-15.5) / 0.21)
+
+# calculate z-score for upper specification limit
+z_upper <- ((16.5 - 16.26) / 0.21)
+
+z_lower
+z_upper
+
+```
+
+###  lower specification and upper specification
+
+```{r}
+# percentage of bottles below the lower specification limit
+p_lower <- pnorm(z_lower, lower.tail = TRUE)
+p_lower * 100
+
+# percentage of bottles above the upper specification limit
+p_upper <- 1 - pnorm(z_upper, lower.tail = TRUE)
+p_upper * 100
+```
+
+### Interpretation
+The percentage of bottles above the upper specification limit is 12.6549%. This means that approximately 12.66% of the produced bottles are above the upper specification limit of 16.5 oz, which indicates that the process may not be meeting the quality requirements and needs to be improved.
+
+# Problem II(6)
+
+6. Since the soft drink bottles fell outside the upper specification are quite large, it is decided to lower the process mean setting by 0.2 units. If you are the production manager, how many bottles of drink you need to produce to get 10000 accepted bottles, with new process mean setting, but same standard deviation.
+
+Ans: Lower the process mean setting by 0.2 units we get the new mean is 16.06 oz. Hence the new upper limit specification will be
+
+```{r}
+new_upper_limit <- 16.06 + 3 * 0.21
+new_upper_limit
+```
+
+Calculate the z-score for the new upper specification limit:
+
+```{r}
+z_new_upper <- (new_upper_limit - 16.06) / 0.21
+z_new_upper
+```
+
+Calculate the percentage of bottles that will be accepted with the new process mean setting:
+
+```{r}
+p_new_upper <- pnorm(z_new_upper, lower.tail = TRUE)
+p_new_upper * 100
+```
+
+### Number of bottles
+
+Calculate the number of bottles that need to be produced to get 10000 accepted bottles. Let N be the number of bottles produced to get 10000 accepted bottles.
+
+```{r}
+N = 10000 / p_new_upper
+N
+```
+
+
+# Problem III: 
+The manager of the local hospital came to know about the SIX SIGMA methodology and overmuch interested to implement it in his hospital. You are hired to do a sample project as data scientist how to improve customer service quality. Since customer satisfaction is an important parameter for assessment, identify one or two quality characteristics related to the customer satisfaction. Explain how you can measure the quality characteristics you have identified.
+
+#Ans:
+
+As a data scientist, in order to improve customer service quality, we can focus on two important quality characteristics related to customer satisfaction:
+
+### Response Time: 
+It refers to the time taken by the hospital staff to respond to the queries, requests or complaints raised by the customers. A shorter response time indicates better customer service quality.
+
+### Communication: 
+It refers to the quality of communication between the hospital staff and customers. Clear and effective communication is essential to ensure that the customers' needs and expectations are understood and met.
+
+To measure these quality characteristics, we can collect data through customer feedback surveys. The surveys can ask questions related to response time and communication quality, such as:
+
+. How satisfied were you with the response time of hospital staff to your queries/requests/complaints?
+
+. Did the hospital staff communicate clearly and effectively with you during your visit?
+
+. How would you rate the overall communication experience with the hospital staff?
+
+Based on the responses to these questions, we can calculate response time and communication scores for each customer, and then calculate the average scores for all customers. These scores can then be used as the basis for improvement initiatives.
+
+For example, if the response time score is lower than expected, the hospital management can work on improving staff training and processes to reduce response time. Similarly, if the communication score is low, the hospital staff can be trained to improve their communication skills, and communication processes can be revisited and improved.
+
+In summary, by focusing on important quality characteristics related to customer satisfaction, and by collecting and analyzing data through customer feedback surveys, we can identify areas for improvement and take corrective actions to improve customer service quality.
+
+# Problem IV
+Perform an exploratory data analysis of the "IRIS Data". Give your interpretations / comments on each analysis you performed.
+
+###Ans
+
+### EDA
+
+```{r}
+iris <- datasets::iris   # Load the IRIS dataset
+head(iris)
+tail(iris)
+ncol(iris)
+nrow(iris)
+colnames(iris)
+str(iris)   # Check the structure of the dataset
+summary(iris)
+class(iris)
+```
+
+#Comments
+The output of summary(iris) shows the summary statistics of each variable in the dataset. We can see that the sepal length ranges from 4.3 to 7.9 cm with a mean of 5.84 cm, the sepal width ranges from 2.0 to 4.4 cm with a mean of 3.06 cm, the petal length ranges from 1.0 to 6.9 cm with a mean of 3.76 cm, and the petal width ranges from 0.1 to 2.5 cm with a mean of 1.20 cm.
+
+#Using apply() to calculate a particular statistic for multiple variables at the same time.
+
+```{r}
+apply(iris[,1:4], 2, sd)
+```
+
+#Summary by groups
+
+```{r}
+# group mean
+aggregate(.~Species, iris, mean) 
+```
+
+```{r}
+# group sd
+aggregate(.~Species, iris, sd) 
+```
+#Table
+
+```{r}
+table(iris$Species)
+```
+
+
+##Visualization
+
+### Scatter Plot
+
+#Create a scatterplot matrix of the dataset
+
+```{r}
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
+  geom_point() +
+  facet_grid(. ~ Species)
+
+ggplot(iris, aes(x = Petal.Length, y = Petal.Width, color = Species)) +
+  geom_point() +
+  facet_grid(. ~ Species)
+```
+
+### Comments
+There seems to be a positive correlation between the length and width of all the species, however there is a distinguishing strong correlation and relationship between petal length and petal width.
+
+### Histogram
+
+#Create Histogram to see the distribution of species
+
+```{r}
+ggplot(iris, aes(x = Sepal.Length, fill = Species)) +
+  geom_histogram(binwidth = 0.2, alpha = 0.7, position = "identity") +
+  labs(title = "Distribution of Sepal Length by Species", x = "Sepal Length (cm)", y = "Count") +
+  scale_fill_manual(values = c("red", "blue", "green"))
+
+ggplot(iris, aes(x = Sepal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.2, alpha = 0.7, position = "identity") +
+  labs(title = "Distribution of Sepal Width by Species", x = "Sepal Width (cm)", y = "Count") +
+  scale_fill_manual(values = c("red", "blue", "green"))
+
+ggplot(iris, aes(x = Petal.Length, fill = Species)) +
+  geom_histogram(binwidth = 0.2, alpha = 0.7, position = "identity") +
+  labs(title = "Distribution of Petal Length by Species", x = "Petal Length (cm)", y = "Count") +
+  scale_fill_manual(values = c("red", "blue", "green"))
+
+ggplot(iris, aes(x = Petal.Width, fill = Species)) +
+  geom_histogram(binwidth = 0.2, alpha = 0.7, position = "identity") +
+  labs(title = "Distribution of Petal Width by Species", x = "Petal Width (cm)", y = "Count") +
+  scale_fill_manual(values = c("red", "blue", "green"))
+
+```
+
+### Comments
+
+1. The distribution of iris-setosa petal is completely different from the other 2 species.
+2. Using sepal length and sepal width, we can’t separate one species from another as the distribution is overlapping.
+3. iris-setosa is not normally distributed by sepal length and petal width.
+4. Petal length can be used as a differentiating factor in terms of the distribution of the 3 flower species.
+
+### Boxplot
+
+#Create a function to generate boxplots for each variable
+
+```{r}
+graph <- function(y) {
+  ggplot(iris, aes(x = Species, y = .data[[y]], fill = Species)) +
+    geom_boxplot(alpha = 0.7) +
+    labs(title = paste("Boxplot of", y, "by Species"), x = "Species", y = y)
+}
+
+# create a 2x2 grid of subplots for each variable
+grid.arrange(
+  graph("Sepal.Length"),
+  graph("Sepal.Width"),
+  graph("Petal.Length"),
+  graph("Petal.Width"),
+  ncol = 2
+)
+```
+
+### Comments
+From the above box plots it’s clear sighted that the Sepal Length for virginica and Sepal Width of Setosa both have outliers (They are the dots that out run the whiskers). While all the other boxplots looked perfectly balanced, we can see that that petal width for both setosa and versicolor are positively skewed as the median lie at the lower end of the boxplot.
+
+### Histogram with Density
+
+#Create a histogram of variable with density curve in the IRIS dataset
+
+```{r}
+ggplot(iris, aes(x = Sepal.Length)) + 
+  geom_histogram(aes(y = ..density..), binwidth = 0.2, color = "black", fill = "lightblue") + 
+  geom_density(alpha = .2, fill = "#FF6666") +
+  labs(title = "Distribution of Sepal Length", x = "Sepal Length", y = "Frequency Density")
+
+ggplot(iris, aes(x = Sepal.Width)) + 
+  geom_histogram(aes(y = ..density..), binwidth = 0.2, color = "black", fill = "lightblue") + 
+  geom_density(alpha = .2, fill = "#FF6666") +
+  labs(title = "Distribution of Sepal Width", x = "Sepal Width", y = "Frequency Density")
+
+ggplot(iris, aes(x = Petal.Length)) + 
+  geom_histogram(aes(y = ..density..), binwidth = 0.2, color = "black", fill = "lightblue") + 
+  geom_density(alpha = .2, fill = "#FF6666") +
+  labs(title = "Distribution of Petal Length", x = "Petal Length", y = "Frequency Density")
+
+ggplot(iris, aes(x = Petal.Width)) + 
+  geom_histogram(aes(y = ..density..), binwidth = 0.2, color = "black", fill = "lightblue") + 
+  geom_density(alpha = .2, fill = "#FF6666") +
+  labs(title = "Distribution of Petal Width", x = "Petal Width", y = "Frequency Density")
+
+```
+
+### Comment
+
+Looking at the overall distribution, petal length and petal width does not have a normal distribution, whereas sepal length and sepal width are uniformly distributed.
+
+#One way ANOVA test
+
+### ANOVA
+
+```{r}
+# perform one-way ANOVA test
+anova_result <- aov(Sepal.Length ~ Species, data = iris)
+
+# summary of the ANOVA test
+summary(anova_result)
+```
+
+### Comment
+ The test resulted in a very small p-value (less than 2e-16), which indicates strong evidence against the null hypothesis. Therefore, we can conclude that there is a significant difference in Sepal Lengths among the three species in the Iris dataset.
+
+
+```{r}
+# Split the iris dataset into two samples: first 50 observations for set 1, and next 50 observations for set 2
+
+set1 <- iris[1:50, 1:4]
+set2 <- iris[51:100, 1:4]
+
+# Calculate the T-squared test statistic and associated p-value
+result <- HotellingsT2(set1, set2)
+result
+# Print the results
+cat("Hotelling's T-squared test statistic:", result$T2, "\n")
+cat("p-value:", result$p.value, "\n")
+
+```
+
+### Comment
+The null hypothesis is that the mean vectors of the two samples are equal. If the p-value is less than the significance level (e.g., 0.05), we reject the null hypothesis and conclude that the mean vectors are significantly different. p-value 0 indicates that we reject the null hypothesis and conclude that there is strong evidence of a difference between the means of the two groups being compared. However, it is important to consider the specific context and assumptions of the test before drawing conclusions.
+
+#Multivariate version of ANOVA - MANOVA
+
+### MANOVA
+
+The main goal of MANOVA is to determine whether there are significant differences between the means of two or more groups on a combination of dependent variables.
+
+```{r}
+# select two variables and categorical variable from iris dataset
+Y <- cbind(iris$Sepal.Length, iris$Sepal.Width)
+cate <- iris$Species
+
+# perform MANOVA
+manova1 <- manova(Y ~ as.factor(cate))
+
+# print summary with Pillai test
+summary(manova1, test = "Pillai")
+```
+
+### Comment
+We reject the null hypothesis of equality of means.
+
+### Summary 
+
+```{r}
+summary.aov(manova1)
+```
+
+
+
+
+
+
+
+
+
+
